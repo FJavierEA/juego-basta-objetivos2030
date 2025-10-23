@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Basta Deluxe Editable - Prototipo</title>
+  <style>
+    :root{--accent:#ff7a59;--bg:#0f1724;--card:#0b1220;--glass:rgba(255,255,255,0.04);--muted:rgba(255,255,255,0.6)}
+    html,body{height:100%;margin:0;font-family:Inter,Segoe UI,system-ui,Arial;color:white;background:linear-gradient(180deg,#071021 0%, #071827 60%);}
+    .app{display:grid;grid-template-columns:320px 1fr 360px;gap:16px;padding:18px;height:100vh;box-sizing:border-box}
+    .panel{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:12px;box-shadow:0 6px 18px rgba(2,6,23,0.6)}
+    h2{margin:6px 0 12px;font-size:16px}
+
+    /* Left: settings */
+    .left{display:flex;flex-direction:column;gap:10px}
+    label{font-size:13px;color:var(--muted)}
+    input[type=text], textarea, select{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+    button{padding:8px 10px;border-radius:8px;border:0;background:var(--accent);color:#071021;font-weight:600;cursor:pointer}
+    .small{padding:6px 8px;font-size:13px}
+    .list{max-height:220px;overflow:auto;padding:6px;border-radius:8px;background:var(--glass)}
+    .row{display:flex;gap:8px;align-items:center}
+
+    /* Center board */
+    .board{display:flex;align-items:center;justify-content:center;position:relative}
+    .wheel-wrap{width:520px;height:520px;display:grid;place-items:center;position:relative}
+    svg#wheel{width:480px;height:480px}
+    .arrow{position:absolute;top:calc(50% - 12px);left:calc(50% - 12px);width:24px;height:24px;transform-origin:50% 50%;pointer-events:none}
+    .arrow .tri{fill:var(--accent)}
+    .spin-btn{position:absolute;bottom:18px;left:50%;transform:translateX(-50%);}
+
+    /* Right player area */
+    .right{display:flex;flex-direction:column;gap:12px}
+    .card{background:linear-gradient(180deg,#071523,#081420);padding:12px;border-radius:10px}
+    .players{display:flex;flex-direction:column;gap:8px}
+    .player{display:flex;justify-content:space-between;align-items:center;padding:8px;border-radius:8px;background:rgba(255,255,255,0.02)}
+    .big{font-size:22px;font-weight:700}
+    .inputs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+    .fields{display:flex;flex-direction:column;gap:8px}
+
+    footer{font-size:12px;color:var(--muted);text-align:center;margin-top:auto}
+
+    /* tiny */
+    .chip{display:inline-block;padding:4px 8px;border-radius:999px;background:rgba(255,255,255,0.03)}
+    .muted{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="panel left">
+      <h2>Configuración</h2>
+      <div>
+        <label>Jugadores</label>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <input id="newPlayer" placeholder="Nombre jugador" />
+          <button id="addPlayerBtn" class="small">Añadir</button>
+        </div>
+        <div id="playersList" class="list" style="margin-top:8px"></div>
+      </div>
+
+      <hr style="opacity:0.06;border:none;height:1px;background:rgba(255,255,255,0.03)" />
+
+      <div>
+        <label>Secciones de la ruleta</label>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <input id="newSection" placeholder="Texto de sección" />
+          <button id="addSectionBtn" class="small">+ Sección</button>
+        </div>
+        <div id="sectionsList" class="list" style="margin-top:8px"></div>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button id="clearSections" class="small">Borrar todas</button>
+          <button id="shuffleSections" class="small">Barajar</button>
+        </div>
+      </div>
+
+      <hr style="opacity:0.06;border:none;height:1px;background:rgba(255,255,255,0.03)" />
+
+      <div>
+        <label>Tarjetas (una por línea)</label>
+        <textarea id="cardsInput" rows="6" placeholder="Escribe las tarjetas...\nEj: Cambio de turno"></textarea>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="saveCards" class="small">Guardar tarjetas</button>
+          <button id="clearCards" class="small">Limpiar</button>
+        </div>
+      </div>
+
+      <div style="margin-top:8px">
+        <label>Guardar/Recuperar</label>
+        <div style="display:flex;gap:8px;margin-top:6px">
+          <button id="saveState" class="small">Guardar local</button>
+          <button id="loadState" class="small">Cargar</button>
+          <button id="resetAll" class="small">Resetear</button>
+        </div>
+      </div>
+      <footer>Abre este archivo en VS Code y presiona "Abrir con Live Server" o abre en tu navegador.</footer>
+    </div>
+
+    <div class="panel board">
+      <div class="wheel-wrap">
+        <svg id="wheel" viewBox="0 0 500 500"></svg>
+        <svg class="arrow" viewBox="0 0 24 24"><polygon class="tri" points="12,0 24,24 0,24"/></svg>
+        <div class="spin-btn"><button id="spinBtn" class="small">Girar ruleta</button></div>
+      </div>
+    </div>
+
+    <div class="panel right">
+      <h2>Turno & Jugador</h2>
+      <div class="card">
+        <div class="row">
+          <div>
+            <div class="muted">Jugador actual</div>
+            <div id="currentPlayer" class="big">—</div>
+          </div>
+          <div style="text-align:right">
+            <div class="muted">Ronda</div>
+            <div id="roundCounter" class="big">0</div>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:8px">
+          <button id="nextTurn" class="small">Siguiente turno</button>
+          <button id="drawCard" class="small">Robar tarjeta</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:10px">
+        <div class="row">
+          <div>
+            <div class="muted">Dado (2 tipos de caras)</div>
+            <div id="diceResult" style="font-size:18px;font-weight:700">—</div>
+          </div>
+          <div>
+            <button id="rollDice" class="small">Lanzar dado</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:10px">
+        <div class="muted">Tarjeta robada</div>
+        <div id="cardShow" style="padding:10px;border-radius:8px;margin-top:6px;background:rgba(255,255,255,0.02)">—</div>
+      </div>
+
+      <div class="card" style="margin-top:10px">
+        <div class="muted">Campos rellenables (similar a Basta)</div>
+        <div id="fieldsArea" class="fields" style="margin-top:8px"></div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button id="addField" class="small">+ Campo</button>
+          <button id="clearFields" class="small">Limpiar campos</button>
+        </div>
+      </div>
+
+      <div style="margin-top:auto;text-align:center;color:var(--muted);font-size:12px">Prototipo funcional — editable</div>
+    </div>
+  </div>
+
+  <script>
+    // --- Estado básico ---
+    const state = {
+      players: [],
+      currentIndex: 0,
+      round: 1,
+      sections: ['Nombre','Animal','País','Comida','Objeto','Color'],
+      cards: ['Pierde turno','Gana 2 puntos','Intercambia con otro jugador','Responde dos veces'],
+    }
+
+    // --- Helpers DOM ---
+    const $ = sel => document.querySelector(sel)
+    const $$ = sel => Array.from(document.querySelectorAll(sel))
+
+    // --- Players ---
+    function renderPlayers(){
+      const el = $('#playersList'); el.innerHTML='';
+      state.players.forEach((p,i)=>{
+        const div=document.createElement('div');div.className='player';
+        div.innerHTML = `<div>${i+1}. ${p}</div><div style="display:flex;gap:6px"><button data-i="${i}" class="small removePlayer">Eliminar</button></div>`
+        el.appendChild(div)
+      })
+      updateCurrentPlayerUI();
+    }
+    $('#addPlayerBtn').onclick = ()=>{
+      const val = $('#newPlayer').value.trim(); if(!val) return alert('Escribe un nombre');
+      state.players.push(val); $('#newPlayer').value=''; renderPlayers();
+    }
+    document.addEventListener('click', e=>{
+      if(e.target.classList.contains('removePlayer')){
+        const i = +e.target.dataset.i; state.players.splice(i,1); if(state.currentIndex>=state.players.length) state.currentIndex=0; renderPlayers();
+      }
+    })
+
+    function updateCurrentPlayerUI(){
+      $('#currentPlayer').textContent = state.players.length? state.players[state.currentIndex] : '—';
+      $('#roundCounter').textContent = state.round;
+    }
+
+    $('#nextTurn').onclick = ()=>{
+      if(!state.players.length) return alert('Agrega jugadores');
+      state.currentIndex = (state.currentIndex + 1) % state.players.length;
+      state.round += (state.currentIndex===0)?1:0;
+      updateCurrentPlayerUI();
+    }
+
+    // --- Sections (ruleta) ---
+    function renderSectionsList(){
+      const el = $('#sectionsList'); el.innerHTML='';
+      state.sections.forEach((s,i)=>{
+        const div=document.createElement('div');div.className='player';
+        div.innerHTML = `<div>${i+1}. <input data-i="${i}" class="sectionInput" value="${s}" /></div><div style="display:flex;gap:6px"><button data-i="${i}" class="small delSection">X</button></div>`
+        el.appendChild(div)
+      })
+      drawWheel();
+    }
+    $('#addSectionBtn').onclick = ()=>{
+      const v = $('#newSection').value.trim(); if(!v) return; state.sections.push(v); $('#newSection').value=''; renderSectionsList();
+    }
+    document.addEventListener('input', e=>{
+      if(e.target.classList.contains('sectionInput')){
+        const i=+e.target.dataset.i; state.sections[i]=e.target.value; drawWheel();
+      }
+    })
+    document.addEventListener('click', e=>{
+      if(e.target.classList.contains('delSection')){ const i=+e.target.dataset.i; state.sections.splice(i,1); renderSectionsList(); }
+    })
+    $('#clearSections').onclick = ()=>{ if(confirm('Borrar todas las secciones?')){ state.sections=[]; renderSectionsList(); }}
+    $('#shuffleSections').onclick = ()=>{ state.sections = state.sections.sort(()=>Math.random()-0.5); renderSectionsList(); }
+
+    // --- Cards ---
+    $('#saveCards').onclick = ()=>{ const t = $('#cardsInput').value.trim(); state.cards = t? t.split('\n').map(s=>s.trim()).filter(Boolean) : []; alert('Tarjetas guardadas: ' + state.cards.length); }
+    $('#clearCards').onclick = ()=>{ if(confirm('Limpiar tarjetas?')){ state.cards=[]; $('#cardsInput').value=''; } }
+
+    // --- Wheel rendering + spin ---
+    const wheel = $('#wheel');
+    function drawWheel(){
+      const n = Math.max(1, state.sections.length);
+      const cx=250, cy=250, r=200;
+      const angle = 360/n;
+      wheel.innerHTML = '';
+      for(let i=0;i<n;i++){
+        const a1 = (i*angle - 90) * Math.PI/180;
+        const a2 = ((i+1)*angle - 90)*Math.PI/180;
+        const x1 = cx + r*Math.cos(a1); const y1 = cy + r*Math.sin(a1);
+        const x2 = cx + r*Math.cos(a2); const y2 = cy + r*Math.sin(a2);
+        const path = `M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2} Z`;
+        const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+        const p = document.createElementNS('http://www.w3.org/2000/svg','path');
+        p.setAttribute('d',path);
+        p.setAttribute('fill', `hsl(${(i*360/n)}, 70%, 40%)`);
+        p.setAttribute('stroke','rgba(0,0,0,0.3)');
+        p.setAttribute('data-i',i);
+        g.appendChild(p);
+
+        // label
+        const midAng = ((i+0.5)*angle - 90) * Math.PI/180;
+        const lx = cx + (r*0.65)*Math.cos(midAng); const ly = cy + (r*0.65)*Math.sin(midAng);
+        const text = document.createElementNS('http://www.w3.org/2000/svg','text');
+        text.setAttribute('x', lx); text.setAttribute('y', ly); text.setAttribute('fill','#fff');
+        text.setAttribute('font-size','12'); text.setAttribute('text-anchor','middle');
+        text.setAttribute('transform', `rotate(${(i+0.5)*angle} ${lx} ${ly})`);
+        text.textContent = state.sections[i] || '—';
+        g.appendChild(text);
+
+        wheel.appendChild(g);
+      }
+
+      // center circle
+      const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+      c.setAttribute('cx',250); c.setAttribute('cy',250); c.setAttribute('r',60); c.setAttribute('fill','rgba(0,0,0,0.4)');
+      wheel.appendChild(c);
+    }
+    drawWheel();
+
+    // spin logic: choose random target index and animate rotation
+    let isSpinning=false; let currentRotation=0;
+    $('#spinBtn').onclick = ()=> spinWheel();
+
+    function spinWheel(){
+      if(isSpinning) return; if(state.sections.length===0) return alert('Agrega secciones a la ruleta');
+      isSpinning=true;
+      const n = state.sections.length;
+      // random target index (different per player) -> add variety via player index/time
+      const targetIndex = Math.floor(Math.random()*n);
+      const anglePer = 360/n;
+      // choose random spins and duration for different speeds
+      const extraSpins = 3 + Math.floor(Math.random()*6); // 3..8 spins
+      const duration = 2000 + Math.random()*2800; // 2s .. 5s
+      // compute final rotation so that arrow (pointing up) lands on targetIndex center
+      // arrow at 0deg points up; wheel rotation positive clockwise; we need wheel rotated so sector center aligns with 0deg
+      const sectorCenter = (targetIndex + 0.5)*anglePer;
+      // final rotation degrees (increase)
+      const final = extraSpins*360 + (360 - sectorCenter) + (Math.random()*anglePer - anglePer/2);
+      const start = currentRotation % 360;
+      const end = currentRotation + final;
+
+      // animate via requestAnimationFrame
+      const startTime = performance.now();
+      function animate(now){
+        const t = Math.min(1, (now - startTime)/duration);
+        // ease out cubic
+        const ease = 1 - Math.pow(1 - t, 3);
+        const rot = start + (end - start)*ease;
+        currentRotation = rot;
+        wheel.style.transform = `rotate(${rot}deg)`;
+        if(t<1) requestAnimationFrame(animate);
+        else{ isSpinning=false; onWheelStop((n - targetIndex) % n); }
+      }
+      requestAnimationFrame(animate);
+    }
+
+    function onWheelStop(resultIndex){
+      // resultIndex is index of section at arrow
+      const text = state.sections[resultIndex] || '—';
+      alert('Ruleta: ' + text + ' (sección '+(resultIndex+1)+')');
+      // optional: create fields matching that text
+      addField(text);
+    }
+
+    // --- Dice ---
+    $('#rollDice').onclick = ()=>{
+      const face = 1 + Math.floor(Math.random()*6);
+      const type = (face<=3)? 'Tipo A' : 'Tipo B';
+      $('#diceResult').textContent = `Cara ${face} — ${type}`;
+    }
+
+    // --- Cards draw ---
+    $('#drawCard').onclick = ()=>{
+      if(!state.cards.length) return alert('No hay tarjetas');
+      const i = Math.floor(Math.random()*state.cards.length);
+      $('#cardShow').textContent = state.cards[i];
+    }
+
+    // --- Fields (Basta-like) ---
+    function renderFields(){
+      const area = $('#fieldsArea'); area.innerHTML='';
+      const fields = JSON.parse(localStorage.getItem('basta_fields')||'[]');
+      if(fields.length===0){ area.innerHTML = '<div class="muted">No hay campos. Pulsa + Campo o gira la ruleta para crear uno.</div>'; return; }
+      fields.forEach((f,i)=>{
+        const div = document.createElement('div'); div.style.display='flex'; div.style.gap='8px';
+        const inp = document.createElement('input'); inp.value=f.label||''; inp.dataset.i=i; inp.oninput = ()=>{ fields[i].label = inp.value; localStorage.setItem('basta_fields', JSON.stringify(fields)); }
+        const ans = document.createElement('input'); ans.placeholder='Respuesta...'; ans.style.flex='1'; ans.value = f.answer||''; ans.oninput = ()=>{ fields[i].answer = ans.value; localStorage.setItem('basta_fields', JSON.stringify(fields)); }
+        const del = document.createElement('button'); del.className='small'; del.textContent='X'; del.onclick = ()=>{ fields.splice(i,1); localStorage.setItem('basta_fields', JSON.stringify(fields)); renderFields(); }
+        div.appendChild(inp); div.appendChild(ans); div.appendChild(del);
+        area.appendChild(div);
+      })
+    }
+    function addField(label){
+      const fields = JSON.parse(localStorage.getItem('basta_fields')||'[]');
+      fields.push({label: label||'Campo', answer: ''});
+      localStorage.setItem('basta_fields', JSON.stringify(fields)); renderFields();
+    }
+    $('#addField').onclick = ()=> addField('Campo');
+    $('#clearFields').onclick = ()=>{ if(confirm('Borrar todos los campos?')){ localStorage.removeItem('basta_fields'); renderFields(); } }
+    renderFields();
+
+    // --- Save / Load state ---
+    $('#saveState').onclick = ()=>{ localStorage.setItem('basta_state', JSON.stringify(state)); alert('Estado guardado localmente'); }
+    $('#loadState').onclick = ()=>{ const s = localStorage.getItem('basta_state'); if(!s) return alert('No hay estado guardado'); const parsed = JSON.parse(s); Object.assign(state, parsed); renderPlayers(); renderSectionsList(); $('#cardsInput').value = state.cards.join('\n'); alert('Estado cargado'); }
+    $('#resetAll').onclick = ()=>{ if(confirm('Resetear todo?')){ localStorage.clear(); location.reload(); } }
+
+    // init
+    renderPlayers(); renderSectionsList(); $('#cardsInput').value = state.cards.join('\n');
+
+    // quick sample players
+    state.players = state.players.length? state.players : ['Ana','Luis']; renderPlayers();
+
+    // allow clicking wheel sectors to spin to that sector
+    wheel.addEventListener('click', (ev)=>{
+      const pt = wheel.createSVGPoint(); pt.x = ev.clientX; pt.y = ev.clientY;
+    });
+
+    // keyboard shortcuts
+    document.addEventListener('keydown', e=>{ if(e.key===' ') spinWheel(); if(e.key==='d') $('#drawCard').click(); if(e.key==='n') $('#nextTurn').click(); })
+  </script>
+</body>
+</html>
